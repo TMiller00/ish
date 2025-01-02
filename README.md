@@ -15,6 +15,6 @@ An attempt at building a basic Unix shell in Zig. It's based on Stephen Brennan'
 
 ```bash
 zig build
-./zig-out/bin/zsh
+./zig-out/bin/ish
 ```
 
