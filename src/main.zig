@@ -1,47 +1,58 @@
 const std = @import("std");
 
 fn readLine(reader: std.fs.File.Reader, allocator: std.mem.Allocator) ![]u8 {
-    var size: usize = 8;
+    var line = std.ArrayList(u8).init(allocator);
+    errdefer line.deinit();
+
     while (true) {
-        return reader.readUntilDelimiterAlloc(allocator, '\n', size) catch |err| {
-            if (err == error.StreamTooLong) {
-                std.debug.print("Old memory: {any}\n", .{size});
-                size *= 2;
-                std.debug.print("New memory: {any}\n", .{size});
-                if (size > std.math.maxInt(usize) / 2) {
-                    return error.StreamTooLong;
+        if (reader.readByte()) |result| {
+            if (result == '\n') break;
+            try line.append(result);
+        } else |err| {
+            if (err == error.EndOfStream) {
+                if (line.items.len == 0) {
+                    return err;
                 }
-                continue;
+                break;
             }
             return err;
-        };
+        }
     }
+
+    return line.toOwnedSlice();
 }
 
-fn loop(args: [][:0]const u8, status: i32) !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+fn splitLine(line: []u8, allocator: std.mem.Allocator) ![][]const u8 {
+    var tokens = std.ArrayList([]const u8).init(allocator);
+    errdefer tokens.deinit();
 
-    defer {
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) @panic("MEMORY LEAK");
+    var it = std.mem.tokenizeAny(u8, line, " ,\t,\r,\n");
+    while (it.next()) |token| {
+        try tokens.append(token);
     }
 
+    return tokens.toOwnedSlice();
+}
+
+fn loop() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
     const stdin = std.io.getStdIn().reader();
+
+    const status = 1;
 
     while (true) {
         std.debug.print("-> ", .{});
         const line = try readLine(stdin, allocator);
-        defer allocator.free(line);
+        const args = try splitLine(line, allocator);
 
-        std.debug.print("line: {any}\n", .{line});
-        std.debug.print("args: {s}\n", .{args});
+        std.debug.print("args: {any}\n", .{args});
         if (status == 0) break;
     }
 }
 
 pub fn main() !void {
-    var args = [_][:0]const u8{ "hello", "world" };
-    const status = 0;
-    try loop(&args, status);
+    try loop();
 }
