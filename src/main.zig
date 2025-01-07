@@ -1,17 +1,25 @@
 const std = @import("std");
 
 fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
-    const pid = std.c.fork();
+    var child = std.process.Child.init(args, allocator);
+    try child.spawn();
 
-    if (pid == 0) {
-        const err = std.process.execv(allocator, args);
-        std.debug.print("shell: {s}\n", .{@errorName(err)});
-        std.process.exit(1);
-    } else if (pid < 0) {
-        std.debug.print("Error forking the process: {any}\n", .{pid});
-    } else {
-        var status: c_int = undefined;
-        _ = std.c.waitpid(pid, &status, 0);
+    const result = try child.wait();
+    switch (result) {
+        .Exited => |code| {
+            if (code != 0) {
+                std.debug.print("Process exited with code {}\n", .{code});
+            }
+        },
+        .Signal => |signal| {
+            std.debug.print("Process terminated with signal {}\n", .{signal});
+        },
+        .Stopped => |code| {
+            std.debug.print("Process stopped with signal {}\n", .{code});
+        },
+        .Unknown => |code| {
+            std.debug.print("Process terminated with unknown {}\n", .{code});
+        },
     }
 
     return 1;
