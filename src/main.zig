@@ -1,5 +1,22 @@
 const std = @import("std");
 
+fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
+    const pid = std.c.fork();
+
+    if (pid == 0) {
+        const err = std.process.execv(allocator, args);
+        std.debug.print("shell: {s}\n", .{@errorName(err)});
+        std.process.exit(1);
+    } else if (pid < 0) {
+        std.debug.print("Error forking the process: {any}\n", .{pid});
+    } else {
+        var status: c_int = undefined;
+        _ = std.c.waitpid(pid, &status, 0);
+    }
+
+    return 1;
+}
+
 fn readLine(reader: std.fs.File.Reader, allocator: std.mem.Allocator) ![]u8 {
     var line = std.ArrayList(u8).init(allocator);
     errdefer line.deinit();
@@ -47,8 +64,7 @@ fn loop() !void {
         std.debug.print("-> ", .{});
         const line = try readLine(stdin, allocator);
         const args = try splitLine(line, allocator);
-
-        std.debug.print("args: {any}\n", .{args});
+        _ = try launch(args, allocator);
         if (status == 0) break;
     }
 }
