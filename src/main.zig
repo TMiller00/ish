@@ -4,7 +4,11 @@ fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
     var child = std.process.Child.init(args, allocator);
     try child.spawn();
 
-    const result = try child.wait();
+    const result = child.wait() catch {
+        std.debug.print("ish: command not found: {s}\n", .{args[0]});
+        return 1;
+    };
+
     switch (result) {
         .Exited => |code| {
             if (code != 0) {
