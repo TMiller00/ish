@@ -1,5 +1,15 @@
 const std = @import("std");
 
+const CommandFn = *const fn (args: [][]const u8) u8;
+
+fn cd(_: [][]const u8) u8 {
+    std.debug.print("cd\n", .{});
+    return 1;
+}
+
+const builtin_str = [1][]const u8{"cd"};
+const builtin_fn = [1]CommandFn{cd};
+
 fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
     var child = std.process.Child.init(args, allocator);
     try child.spawn();
@@ -27,6 +37,20 @@ fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
     }
 
     return 1;
+}
+
+fn execute(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
+    if (args.len == 0) {
+        return 1;
+    }
+
+    for (builtin_str) |builtin| {
+        if (std.mem.eql(u8, builtin, args[0])) {
+            return builtin_fn[0](args);
+        }
+    }
+
+    return launch(args, allocator);
 }
 
 fn readLine(reader: std.fs.File.Reader, allocator: std.mem.Allocator) ![]u8 {
@@ -76,7 +100,7 @@ fn loop() !void {
         std.debug.print("$ ", .{});
         const line = try readLine(stdin, allocator);
         const args = try splitLine(line, allocator);
-        _ = try launch(args, allocator);
+        _ = try execute(args, allocator);
         if (status == 0) break;
     }
 }
