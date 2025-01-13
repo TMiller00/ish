@@ -2,8 +2,21 @@ const std = @import("std");
 
 const CommandFn = *const fn (args: [][]const u8) u8;
 
-fn cd(_: [][]const u8) u8 {
-    std.debug.print("cd\n", .{});
+fn cd(args: [][]const u8) u8 {
+    if (args.len == 1) {
+        std.debug.print("ish: expected argument to \"cd\"\n", .{});
+        return 1;
+    }
+
+    if (args.len > 2) {
+        std.debug.print("cd: too many arguments\n", .{});
+        return 1;
+    }
+
+    _ = std.posix.chdir(args[1]) catch {
+        std.debug.print("cd: no such file or directory {s}\n", .{args[1]});
+    };
+
     return 1;
 }
 
@@ -94,13 +107,13 @@ fn loop() !void {
 
     const stdin = std.io.getStdIn().reader();
 
-    const status = 1;
+    var status: c_int = 1;
 
     while (true) {
         std.debug.print("$ ", .{});
         const line = try readLine(stdin, allocator);
         const args = try splitLine(line, allocator);
-        _ = try execute(args, allocator);
+        status = try execute(args, allocator);
         if (status == 0) break;
     }
 }
