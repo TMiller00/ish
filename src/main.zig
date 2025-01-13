@@ -73,7 +73,7 @@ fn loop() !void {
     const status = 1;
 
     while (true) {
-        std.debug.print("-> ", .{});
+        std.debug.print("$ ", .{});
         const line = try readLine(stdin, allocator);
         const args = try splitLine(line, allocator);
         _ = try launch(args, allocator);
