@@ -20,8 +20,12 @@ fn cd(args: [][]const u8) u8 {
     return 1;
 }
 
-const builtin_str = [1][]const u8{"cd"};
-const builtin_fn = [1]CommandFn{cd};
+fn exit(_: [][]const u8) u8 {
+    return 0;
+}
+
+const builtin_str = [2][]const u8{ "cd", "exit" };
+const builtin_fn = [2]CommandFn{ cd, exit };
 
 fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
     var child = std.process.Child.init(args, allocator);
@@ -57,9 +61,9 @@ fn execute(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
         return 1;
     }
 
-    for (builtin_str) |builtin| {
+    for (builtin_str, 0..) |builtin, index| {
         if (std.mem.eql(u8, builtin, args[0])) {
-            return builtin_fn[0](args);
+            return builtin_fn[index](args);
         }
     }
 
