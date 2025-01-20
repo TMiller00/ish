@@ -1,5 +1,5 @@
 const std = @import("std");
-const execute = @import("execute.zig");
+const execute = @import("execute.zig").execute;
 const readLine = @import("readLine.zig").readLine;
 const splitLine = @import("splitLine.zig").splitLine;
 
