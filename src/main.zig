@@ -3,6 +3,16 @@ const execute = @import("execute.zig").execute;
 const readLine = @import("readLine.zig").readLine;
 const splitLine = @import("splitLine.zig").splitLine;
 
+fn getPrompt(allocator: std.mem.Allocator) ![]const u8 {
+    var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+    const cwd = try std.fs.cwd().realpath(".", &buf);
+
+    const dirname = std.fs.path.basename(cwd);
+
+    const result = try std.fmt.allocPrint(allocator, "-> {s} ", .{dirname});
+    return result;
+}
+
 fn loop() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -13,7 +23,10 @@ fn loop() !void {
     var status: c_int = 1;
 
     while (true) {
-        std.debug.print("$ ", .{});
+        // Write prompt
+        const prompt = try getPrompt(allocator);
+        try std.io.getStdOut().writer().writeAll(prompt);
+
         const line = try readLine(stdin, allocator);
         const args = try splitLine(line, allocator);
         status = try execute(args, allocator);
