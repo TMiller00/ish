@@ -3,12 +3,27 @@ const builtins = @import("builtins.zig");
 
 fn launch(args: [][]const u8, allocator: std.mem.Allocator) !c_int {
     var child = std.process.Child.init(args, allocator);
-    try child.spawn();
 
-    const result = child.wait() catch {
-        std.debug.print("ish: command not found: {s}\n", .{args[0]});
+    // Debug prints to help us see what's being passed to grep
+    std.debug.print("Launching command: {s} with {} arguments\n", .{ args[0], args.len });
+    for (args, 0..) |arg, i| {
+        std.debug.print("arg[{}] = {s}\n", .{ i, arg });
+    }
+
+    child.spawn() catch |err| {
+        switch (err) {
+            error.FileNotFound => {
+                std.debug.print("ish: command not found: {s}\n", .{args[0]});
+            },
+            else => {
+                std.debug.print("ish: error spawning process: {}\n", .{err});
+            },
+        }
+
         return 1;
     };
+
+    const result = try child.wait();
 
     switch (result) {
         .Exited => |code| {
