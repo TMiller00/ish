@@ -17,13 +17,19 @@ fn getCurrentGitBranch(allocator: std.mem.Allocator) !?[]const u8 {
     };
     defer allocator.free(head_contents);
 
+    // Using errdefer to ensure memory is freed if subsequent allocations fail
+    var result: ?[]const u8 = null;
+    errdefer if (result) |r| allocator.free(r);
+
     if (std.mem.indexOf(u8, head_contents, "ref: refs/heads/")) |index| {
         const branch_name = std.mem.trim(u8, head_contents[index + "ref: refs/heads/".len ..], "\n\r");
-        return try allocator.dupe(u8, branch_name);
+        result = try allocator.dupe(u8, branch_name);
+        return result;
     }
 
     if (head_contents.len >= 7) {
-        return try allocator.dupe(u8, head_contents[0..7]);
+        result = try allocator.dupe(u8, head_contents[0..7]);
+        return result;
     }
 
     return null;
@@ -58,7 +64,15 @@ fn loop() !void {
         const prompt = try getPrompt(allocator);
         try std.io.getStdOut().writer().writeAll(prompt);
 
-        const line = try readLine(stdin, allocator);
+        const line = readLine(stdin, allocator) catch |err| {
+            if (err == error.EndOfStream) {
+                // Exit gracefully on Ctrl+D (EOF)
+                try std.io.getStdOut().writer().writeAll("\n");
+                break;
+            }
+            return err;
+        };
+        
         const args = try splitLine(line, allocator);
         status = try execute(args, allocator);
         if (status == 0) break;
